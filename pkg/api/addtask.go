@@ -3,22 +3,24 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"go1f/pkg/db"
 	"io"
 	"net/http"
 	"time"
+
+	"go1f/pkg/db"
 )
 
-// Структура для возврата ID или ошибки
+// ResponseID представляет собой структуру для ответа с идентификатором задачи в формате JSON.
 type ResponseID struct {
 	ID string `json:"id"`
 }
 
+// ResponseError представляет собой структуру для ответа с ошибкой в формате JSON.
 type ResponseError struct {
 	Error string `json:"error"`
 }
 
-// writeJSON сериализует данные в JSON и отправляет ответ.
+// WriteJSON записывает данные в формате JSON в ответ HTTP.
 func WriteJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(status)
@@ -27,16 +29,14 @@ func WriteJSON(w http.ResponseWriter, status int, data interface{}) {
 	}
 }
 
-// writeError пишет ошибку в JSON формате.
+// WriteError записывает ошибку в формате JSON в ответ HTTP.
 func WriteError(w http.ResponseWriter, status int, errMsg string) {
 	WriteJSON(w, status, ResponseError{Error: errMsg})
 }
 
-// afterNow возвращает true, если date больше now.
-// Это должна быть та же функция, что и в NextDate.
-// addTaskHandler обрабатывает POST-запросы для добавления новой задачи.
+// AddTaskHandler обрабатывает HTTP запросы для добавления новой задачи в базу данных.
 func AddTaskHandler(w http.ResponseWriter, r *http.Request) {
-	var task db.Task
+	task := db.Task{}
 
 	// 1. Десериализовать JSON запрос в переменную task.
 	body, err := io.ReadAll(r.Body)
@@ -106,7 +106,7 @@ func checkDate(task *db.Task) error {
 		// Если дата задачи не меньше сегодняшнего числа, но repeat указан,
 		// все равно проверяем repeat на корректность.
 		if task.Repeat != "" {
-			_, err := NextDate(now, task.Date, task.Repeat) // Просто вызываем для проверки формата
+			_, err := NextDate(now, task.Date, task.Repeat)
 			if err != nil {
 				return fmt.Errorf("правило повторения указано в неправильном формате: %w", err)
 			}

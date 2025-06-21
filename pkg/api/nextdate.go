@@ -10,7 +10,6 @@ import (
 
 // afterNow возвращает true, если date больше now.
 func afterNow(date, now time.Time) bool {
-	// Сравниваем только даты, игнорируя время.
 	return date.Year() > now.Year() ||
 		(date.Year() == now.Year() && date.Month() > now.Month()) ||
 		(date.Year() == now.Year() && date.Month() == now.Month() && date.Day() > now.Day())
@@ -43,7 +42,6 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 			return "", fmt.Errorf("d %d: превышен максимально допустимый интервал (1-400)", intervalDays)
 		}
 
-		// Цикл для сдвига даты на указанное количество дней
 		for {
 			currentDate = currentDate.AddDate(0, 0, intervalDays)
 			if afterNow(currentDate, now) {
@@ -54,7 +52,6 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 		if len(parts) != 1 {
 			return "", errors.New("y: этот параметр не требует дополнительных уточнений")
 		}
-		// Цикл для сдвига даты на год
 		for {
 			currentDate = currentDate.AddDate(1, 0, 0)
 			if afterNow(currentDate, now) {

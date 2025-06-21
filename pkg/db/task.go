@@ -16,6 +16,7 @@ type Task struct {
 	Repeat  string `json:"repeat"`
 }
 
+// GetTask возвращает задачу по ID из базы данных.
 func GetTask(id string) (*Task, error) {
 	if DB == nil {
 		return nil, errors.New("db.DB is nil: database connection not initialized")
@@ -26,23 +27,24 @@ func GetTask(id string) (*Task, error) {
 	if err != nil {
 		return nil, fmt.Errorf("некорректный формат ID: %w", err) // Ошибка парсинга
 	}
-	row := DB.QueryRow(query, idInt) // Используем int64 для запроса к числовому ID в БД
+	row := DB.QueryRow(query, idInt)
 
 	var task Task
-	var dbID int64 // Всегда сканируем числовой ID из БД в int64
+	var dbID int64
 
 	if err := row.Scan(&dbID, &task.Date, &task.Title, &task.Comment, &task.Repeat); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("задача с ID %s не найдена", id) // <-- Используем ErrTaskNotFound
+			return nil, fmt.Errorf("задача с ID %s не найдена", id)
 		}
 		return nil, fmt.Errorf("ошибка при сканировании строки задачи: %w", err)
 	}
-	// Преобразуем int64 ID из БД в string для поля Task.ID
+
 	task.ID = strconv.FormatInt(dbID, 10)
 
 	return &task, nil
 }
 
+// AddTask добавляет новую задачу в базу данных и возвращает её ID.
 func AddTask(task *Task) (int64, error) {
 	query := `INSERT INTO scheduler (date, title, comment, repeat) VALUES (?, ?, ?, ?)`
 	res, err := DB.Exec(query, task.Date, task.Title, task.Comment, task.Repeat)
@@ -56,6 +58,8 @@ func AddTask(task *Task) (int64, error) {
 	task.ID = strconv.FormatInt(lastID, 10)
 	return lastID, nil
 }
+
+// Tasks возвращает список задач из базы данных с ограничением по количеству.
 func Tasks(w http.ResponseWriter, limit int) ([]*Task, error) {
 	query := `SELECT id, date, title, comment, repeat FROM scheduler ORDER BY date LIMIT ?`
 	rows, err := DB.Query(query, limit)
@@ -83,6 +87,7 @@ func Tasks(w http.ResponseWriter, limit int) ([]*Task, error) {
 	return tasks, nil
 }
 
+// UpdateTask обновляет существующую задачу в базе данных по её ID.
 func UpdateTask(task *Task) error {
 	query := `UPDATE scheduler SET date = ?, title = ?, comment = ?, repeat = ? WHERE id = ?`
 	res, err := DB.Exec(query, task.Date, task.Title, task.Comment, task.Repeat, task.ID)
@@ -100,6 +105,7 @@ func UpdateTask(task *Task) error {
 	return nil
 }
 
+// DeleteTask удаляет задачу из базы данных по её ID.
 func DeleteTask(id string) error {
 	query := `DELETE FROM scheduler WHERE id = ?`
 	idInt, err := strconv.ParseInt(id, 10, 64)
@@ -116,7 +122,7 @@ func DeleteTask(id string) error {
 		return fmt.Errorf("ошибка получения количества затронутых строк: %w", err)
 	}
 	if count == 0 {
-		return fmt.Errorf("задача с ID %s не найдена для удаления", id) // <-- Используем ErrTaskNotFound
+		return fmt.Errorf("задача с ID %s не найдена для удаления", id)
 	}
 	return nil
 }

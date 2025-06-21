@@ -1,14 +1,17 @@
 package api
 
 import (
-	"go1f/pkg/db"
 	"net/http"
+
+	"go1f/pkg/db"
 )
 
+// TasksResp представляет собой структуру для ответа с задачами в формате JSON.
 type TasksResp struct {
 	Tasks []*db.Task `json:"tasks"`
 }
 
+// GetTasksHandler обрабатывает HTTP запросы для получения списка задач.
 func GetTasksHandler(w http.ResponseWriter, r *http.Request) {
 	tasks, err := db.Tasks(w, 50) // в параметре максимальное количество записей
 	if err != nil {

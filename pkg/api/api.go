@@ -3,11 +3,12 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"go1f/pkg/db"
 	"io"
 	"log"
 	"net/http"
 	"time"
+
+	"go1f/pkg/db"
 )
 
 func Init() {
@@ -18,6 +19,27 @@ func Init() {
 	log.Println("Обработчики зарегистрированы.")
 }
 
+// TaskHandler обрабатывает HTTP запросы для управления задачами.
+// В зависимости от метода запроса (POST, GET, PUT, DELETE) вызывает соответствующие обработчики.
+func TaskHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("Получен запрос по пути: %s, метод: %s\n", r.URL.Path, r.Method)
+	switch r.Method {
+	case http.MethodPost:
+		log.Println("Вызов api.AddTaskHandler")
+		AddTaskHandler(w, r)
+	case http.MethodGet:
+		log.Println("Вызов api.GetTask")
+		GetTaskByIDHandler(w, r)
+	case http.MethodPut:
+		log.Println("Вызов api.UpdateTaskHandler")
+		UpdateTaskHandler(w, r)
+	case http.MethodDelete:
+		log.Println("Вызов api.DeleteTaskHandler")
+		DeleteTaskHandler(w, r)
+	}
+}
+
+// DeleteTaskHandler обрабатывает HTTP запросы для удаления задачи по ID.
 func DeleteTaskHandler(w http.ResponseWriter, r *http.Request) {
 	taskID := r.URL.Query().Get("id")
 	log.Printf("Получен запрос на удаление задачи с ID: %s\n", taskID)
@@ -27,8 +49,7 @@ func DeleteTaskHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 1. Удаляем задачу из базы данных
-	err := db.DeleteTask(taskID) // Убедитесь, что db.DeleteTask принимает string
+	err := db.DeleteTask(taskID)
 	if err != nil {
 		log.Printf("Ошибка удаления задачи с ID %s: %v\n", taskID, err)
 		WriteError(w, http.StatusInternalServerError, "Ошибка удаления задачи: "+err.Error())
@@ -39,6 +60,7 @@ func DeleteTaskHandler(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, struct{}{}) // Отправляем пустой JSON в ответе
 }
 
+// DoneHandler обрабатывает HTTP запросы для завершения задачи по ID.
 func DoneHandler(w http.ResponseWriter, r *http.Request) {
 	taskID := r.URL.Query().Get("id")
 	log.Printf("Получен запрос на завершение задачи с ID: %s\n", taskID)
@@ -58,7 +80,7 @@ func DoneHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if task.Repeat == "" {
 		// 2. Если задача не повторяется, просто удаляем её
-		err = db.DeleteTask(taskID) // Убедитесь, что db.DeleteTask принимает string
+		err = db.DeleteTask(taskID)
 		if err != nil {
 			log.Printf("Ошибка удаления задачи с ID %s: %v\n", taskID, err)
 			WriteError(w, http.StatusInternalServerError, "Ошибка удаления задачи: "+err.Error())
@@ -73,8 +95,9 @@ func DoneHandler(w http.ResponseWriter, r *http.Request) {
 			WriteError(w, http.StatusBadRequest, "Ошибка при вычислении следующей даты: "+err.Error())
 			return
 		}
-		task.Date = date          // Обновляем дату задачи
-		err = db.UpdateTask(task) // Убедитесь, что db.UpdateTask принимает *db.Task
+		// Обновляем дату задачи
+		task.Date = date
+		err = db.UpdateTask(task)
 		if err != nil {
 			log.Printf("Ошибка обновления задачи с ID %s: %v\n", taskID, err)
 			WriteError(w, http.StatusInternalServerError, "Ошибка обновления задачи: "+err.Error())
@@ -85,11 +108,12 @@ func DoneHandler(w http.ResponseWriter, r *http.Request) {
 
 	// 4. Отправляем финальный успешный ответ
 	log.Printf("Операция завершения задачи с ID %s успешно выполнена.\n", taskID)
-	WriteJSON(w, http.StatusOK, struct{}{}) // Отправляем ID в ответе
+	WriteJSON(w, http.StatusOK, struct{}{})
 }
 
+// UpdateTaskHandler обрабатывает HTTP запросы для обновления задачи.
 func UpdateTaskHandler(w http.ResponseWriter, r *http.Request) {
-	var task db.Task
+	task := db.Task{}
 
 	// 1. Десериализовать JSON запрос в переменную task.
 	body, err := io.ReadAll(r.Body)
@@ -137,6 +161,7 @@ func UpdateTaskHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Ответ отправлен для обновленной задачи с ID %s\n", task.ID)
 }
 
+// GetTaskByIDHandler обрабатывает HTTP запросы для получения задачи по ID.
 func GetTaskByIDHandler(w http.ResponseWriter, r *http.Request) {
 	taskID := r.URL.Query().Get("id")
 	log.Printf("Получен запрос на получение задачи с ID: %s\n", taskID)
@@ -158,6 +183,7 @@ func GetTaskByIDHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Ответ отправлен для задачи с ID %s\n", taskID)
 }
 
+// HandleNextDate обрабатывает HTTP запросы для вычисления следующей даты задачи.
 func HandleNextDate(w http.ResponseWriter, r *http.Request) {
 	queryNow := r.URL.Query().Get("now")
 	queryDate := r.URL.Query().Get("date")
@@ -195,22 +221,4 @@ func HandleNextDate(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(nextDateStr))
-}
-
-func TaskHandler(w http.ResponseWriter, r *http.Request) {
-	log.Printf("Получен запрос по пути: %s, метод: %s\n", r.URL.Path, r.Method)
-	switch r.Method {
-	case http.MethodPost:
-		log.Println("Вызов api.AddTaskHandler")
-		AddTaskHandler(w, r)
-	case http.MethodGet:
-		log.Println("Вызов api.GetTask")
-		GetTaskByIDHandler(w, r)
-	case http.MethodPut:
-		log.Println("Вызов api.UpdateTaskHandler")
-		UpdateTaskHandler(w, r)
-	case http.MethodDelete:
-		log.Println("Вызов api.DeleteTaskHandler")
-		DeleteTaskHandler(w, r)
-	}
 }

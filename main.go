@@ -1,11 +1,12 @@
 package main
 
 import (
+	"fmt"
+	"log"
+	"net/http"
+
 	"go1f/pkg/api"
 	"go1f/pkg/db"
-
-	"go1f/pkg/server"
-	"log"
 )
 
 func main() {
@@ -14,13 +15,14 @@ func main() {
 		log.Fatalf("Ошибка инициализации базы данных: %v", err)
 	}
 	defer db.DB.Close()
-	log.Println("База данных инициализирована и подключена.")
+	log.Println("Подключение к базе данных")
 	api.Init()
-	log.Println("Попытка запуска сервера...")
-	err = server.Run()
+	port := 7540
+	http.Handle("/", http.FileServer(http.Dir("web")))
+	log.Println("Запуск сервера на порту 7540.")
+	err = http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 	if err != nil {
-		log.Printf("Ошибка запуска сервера: %v", err)
+		log.Fatalf("Ошибка запуска сервера: %v", err)
 		return
 	}
-	log.Println("Сервер запущен на порту 7540.")
 }
